@@ -221,7 +221,7 @@ body:not(.pstyle) #planets .crest { display:none; }   /* hexagon style: colour o
 <div id="menu">
   <button id="prodBtn">Calculate production</button>
   <button id="fsBtn">Enter fullscreen</button>
-  <button id="resetZoom">Reset zoom</button>
+  <button id="crossBtn">Hide &amp; disable ❌</button>
   <button id="styleBtn">Show allegiance as a hexagon</button>
   <button id="iconsBtn">Custom icons</button>
   <button id="clear">Clear map</button>
@@ -319,7 +319,7 @@ const el = (tag, attrs = {}, parent) => {
 /* ---------- interface languages ---------- */
 const STR = {
   en: { title:"Planet Map", menu:"Menu", zoomIn:"Zoom in", zoomOut:"Zoom out",
-        reset:"Reset zoom", clear:"Clear map", exit:"Exit", lang:"Мова: Українська",
+        crossHide:"Hide & disable ❌", crossShow:"Show & enable ❌", clear:"Clear map", exit:"Exit", lang:"Мова: Українська",
         fsEnter:"Enter fullscreen", fsExit:"Exit fullscreen",
         prod:"Calculate production",
         hintP:"Tap a planet: allegiance. Tap the symbols: sabotage. Long-press a planet: cross. Long-press the system area: enemy troops. Pinch or +/− to zoom.",
@@ -332,10 +332,10 @@ const STR = {
         iconsNote:"Pick a picture from your phone for each icon. Crop it to a single icon first; a plain dark or light background is removed automatically.",
         slot_occ:"Occupation", slot_imp:"Empire", slot_reb:"Rebels", slot_shipReb:"Rebel ship", slot_shipImp:"Imperial ship",
         pick:"Choose", resetIcon:"Reset", standard:"standard", tooBig:"Could not save the picture: not enough storage.",
-        sab:"sabotage", enemy:"enemy troops", occNote:"* occupied: only the first symbol counts", needFac:"Enemy troops: set the system's allegiance first (tap the hexagon).", needFacP:"Enemy troops: set the system's allegiance first (tap the planet).",
+        sab:"sabotage", enemy:"enemy troops", occNote:"* occupied: only the first symbol counts", needCross:"Crosses are hidden and turned off. Turn them on first: menu → Show & enable ❌.", needFac:"Enemy troops: set the system's allegiance first (tap the hexagon).", needFacP:"Enemy troops: set the system's allegiance first (tap the planet).",
         styleP:"Show allegiance as a hexagon", styleH:"Show allegiance on the planet", about:"How to use", nothing:"—", close:"Close" },
   uk: { title:"Карта планет", menu:"Меню", zoomIn:"Збільшити", zoomOut:"Зменшити",
-        reset:"Скинути масштаб", clear:"Очистити карту", exit:"Вийти", lang:"Language: English",
+        crossHide:"Приховати і викл. ❌", crossShow:"Показати і вкл. ❌", clear:"Очистити карту", exit:"Вийти", lang:"Language: English",
         fsEnter:"Повний екран", fsExit:"Вийти з повного екрана",
         prod:"Порахувати виробництво",
         hintP:"Тап по планеті — належність. Тап по символах — диверсія. Довге натискання на планету — хрестик. Довге натискання на область системи — ворожі війська. Двома пальцями або +/− — масштаб.",
@@ -348,7 +348,7 @@ const STR = {
         iconsNote:"Виберіть картинку з телефона для кожного значка. Спочатку обріжте її до одного значка; рівний темний або світлий фон прибирається автоматично.",
         slot_occ:"Окупація", slot_imp:"Імперія", slot_reb:"Повстанці", slot_shipReb:"Корабель повстанців", slot_shipImp:"Корабель Імперії",
         pick:"Вибрати", resetIcon:"Скинути", standard:"стандартний", tooBig:"Не вдалося зберегти картинку: замало пам'яті.",
-        sab:"диверсія", enemy:"ворожі війська", occNote:"* окупована: враховано лише перший символ", needFac:"Ворожі війська: спочатку задайте належність системи (тап по шестикутнику).", needFacP:"Ворожі війська: спочатку задайте належність системи (тап по планеті).",
+        sab:"диверсія", enemy:"ворожі війська", occNote:"* окупована: враховано лише перший символ", needCross:"Хрестики приховані й вимкнені. Спочатку увімкніть їх: меню → Показати і вкл. ❌.", needFac:"Ворожі війська: спочатку задайте належність системи (тап по шестикутнику).", needFacP:"Ворожі війська: спочатку задайте належність системи (тап по планеті).",
         styleP:"Показувати належність шестикутником", styleH:"Показувати належність на планеті", about:"Як користуватися", nothing:"—", close:"Закрити" }
 };
 let lang = "en";
@@ -357,6 +357,9 @@ const label = p => lang === "uk" ? p.ua : p.name;
 let facStyle = "planet";               /* "planet": paint the planet, "hex": hexagon token */
 try { if (localStorage.getItem(STYLE_KEY) === "hex") facStyle = "hex"; } catch(e) {}
 const pMode = () => facStyle === "planet";
+const CROSS_KEY = "rebel_base_map_crosses";
+let crossOn = true;                    /* false: crosses hidden, long press on a planet disabled */
+try { if (localStorage.getItem(CROSS_KEY) === "0") crossOn = false; } catch(e) {}
 document.body.classList.toggle("pstyle", pMode());
 const hintText = () => STR[lang][pMode() ? "hintP" : "hint"];
 const isFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -640,7 +643,7 @@ function layoutLabels() {
 
 function render() {
   for (const p of planets) {
-    const on = !!marks[p.name];
+    const on = crossOn && !!marks[p.name];
     crosses[p.name].classList.toggle("on", on);
     labelEls[p.name].g.classList.toggle("marked", on);
     const T = tokEls[p.name];
@@ -685,7 +688,7 @@ function applyLang() {
   document.getElementById("zoomIn").setAttribute("aria-label", t.zoomIn);
   document.getElementById("zoomOut").setAttribute("aria-label", t.zoomOut);
   document.getElementById("menuButton").setAttribute("aria-label", t.menu);
-  document.getElementById("resetZoom").textContent = t.reset;
+  document.getElementById("crossBtn").textContent = crossOn ? t.crossHide : t.crossShow;
   document.getElementById("clear").textContent = t.clear;
   document.getElementById("exit").textContent = t.exit;
   document.getElementById("langBtn").textContent = t.lang;
@@ -735,8 +738,10 @@ function zoomAt(cx, cy, factor) {
 function zoomCentre(factor) { const b = baseBox(); zoomAt(b.sw/2, b.sh/2, factor); }
 document.getElementById("zoomIn").addEventListener("click", () => zoomCentre(1.5));
 document.getElementById("zoomOut").addEventListener("click", () => zoomCentre(1/1.5));
-document.getElementById("resetZoom").addEventListener("click", () => {
-  scale = 1; tx = 0; ty = 0; apply(); setMenu(false);
+document.getElementById("crossBtn").addEventListener("click", () => {
+  crossOn = !crossOn;
+  try { localStorage.setItem(CROSS_KEY, crossOn ? "1" : "0"); } catch(e) {}
+  applyLang(); render(); setMenu(false);
 });
 window.addEventListener("resize", () => { layoutLabels(); apply(); });
 
@@ -841,10 +846,10 @@ mapEl.addEventListener("pointerdown", e => {
   cancelPress();
   pressTimer = setTimeout(() => {
     pressTimer = null; tapOk = false; panning = false;
-    if (tg.empty) {                               /* no allegiance yet: explain instead of silence */
-      hint.textContent = STR[lang][pMode() ? "needFacP" : "needFac"];
+    if (tg.empty || (tg.cross && !crossOn)) {     /* explain instead of silence */
+      hint.textContent = tg.empty ? STR[lang][pMode() ? "needFacP" : "needFac"] : STR[lang].needCross;
       hint.classList.remove("hide");
-      clearTimeout(hint._t); hint._t = setTimeout(() => hint.classList.add("hide"), 2500);
+      clearTimeout(hint._t); hint._t = setTimeout(() => hint.classList.add("hide"), tg.empty ? 2500 : 3500);
       if (navigator.vibrate) navigator.vibrate(15);
       return;
     }
@@ -1063,14 +1068,15 @@ const ABOUT = {
 <li>Prefer the old hexagon next to the name? Menu → <b>Show allegiance as a hexagon</b> switches the style; then you tap the hexagon instead.</li></ul>
 <h3>Search for the base</h3><ul>
 <li><b>Long-press a planet</b> to cross it out (the base is not there). Long-press again to remove the cross.</li>
-<li>Coruscant is always Imperial and always crossed out.</li></ul>
+<li>Coruscant is always Imperial and always crossed out.</li>
+<li>Menu → <b>Hide &amp; disable ❌</b> hides all crosses and turns off long-pressing planets (enemy troops still work). The crosses are kept; menu → <b>Show &amp; enable ❌</b> brings them back.</li></ul>
 <h3>Production</h3><ul>
 <li><b>Tap the production symbols</b> under a planet to mark sabotage; tap again to remove it.</li>
 <li><b>Long-press the empty area of a system</b> to mark enemy troops there (set the allegiance first).</li>
 <li>Sabotaged systems and systems with enemy troops produce nothing.</li>
 <li>Menu → <b>Calculate production</b> shows units per side and queue. Occupied systems count only their first symbol; the Rebel base is always included.</li></ul>
 <h3>Map and settings</h3><ul>
-<li><b>Pinch</b> or <b>+ / −</b> to zoom, drag to move; menu → <b>Reset zoom</b> to go back.</li>
+<li><b>Pinch</b> or <b>+ / −</b> to zoom, drag to move.</li>
 <li><b>Custom icons</b>: use your own pictures for allegiance and ships.</li>
 <li><b>Clear map</b> starts a new game. Everything is saved automatically on this device only.</li></ul>
 <p class="fine">Unofficial fan-made tool, not affiliated with Fantasy Flight Games or Lucasfilm.</p>`,
@@ -1082,14 +1088,15 @@ const ABOUT = {
 <li>Зручніше старий шестикутник біля назви? Меню → <b>Показувати належність шестикутником</b> перемикає стиль; тоді тапати треба по шестикутнику.</li></ul>
 <h3>Пошук бази</h3><ul>
 <li><b>Довге натискання на планету</b> — закреслити (бази там немає). Ще раз — прибрати хрестик.</li>
-<li>Корусант завжди імперський і завжди закреслений.</li></ul>
+<li>Корусант завжди імперський і завжди закреслений.</li>
+<li>Меню → <b>Приховати і викл. ❌</b> ховає всі хрестики й вимикає довге натискання на планети (ворожі війська працюють як і раніше). Хрестики не стираються; меню → <b>Показати і вкл. ❌</b> повертає їх.</li></ul>
 <h3>Виробництво</h3><ul>
 <li><b>Тап по символах виробництва</b> під планетою — диверсія; ще раз — прибрати.</li>
 <li><b>Довге натискання на порожню область системи</b> — ворожі війська (спершу задайте належність).</li>
 <li>Система з диверсією або ворожими військами нічого не виробляє.</li>
 <li>Меню → <b>Порахувати виробництво</b> показує юніти кожної сторони за чергами. Окупована система дає лише перший символ; база повстанців враховується завжди.</li></ul>
 <h3>Карта й налаштування</h3><ul>
-<li><b>Двома пальцями</b> або <b>+ / −</b> — масштаб, тягнути — рух; меню → <b>Скинути масштаб</b>.</li>
+<li><b>Двома пальцями</b> або <b>+ / −</b> — масштаб, тягнути — рух.</li>
 <li><b>Свої значки</b>: власні картинки для належності й кораблів.</li>
 <li><b>Очистити карту</b> — нова гра. Усе зберігається автоматично лише на цьому пристрої.</li></ul>
 <p class="fine">Неофіційний фанатський інструмент, не пов'язаний з Fantasy Flight Games чи Lucasfilm.</p>`
