@@ -59,6 +59,16 @@ body:not(.pstyle) #planets .crest { display:none; }   /* hexagon style: colour o
 .pl .emb { fill:currentColor; }
 .pl .ring { fill:none; stroke:currentColor; }
 .pl.imp { color:#f4f4f4; } .pl.occ { color:#f4f4f4; } .pl.reb { color:#c62828; }
+/* rebel planets white-blue (both styles), neutral planets white-grey */
+#planets .pl.reb > circle.base { fill:url(#rebShadeBlue); stroke:#3d6e9e; }
+.hex .pl.reb .def > polygon.base { fill:url(#rebShadeBlue); stroke:#3d6e9e; }
+/* no production this turn (sabotage / enemy troops): soft glow on the rim */
+.noprod { display:none; fill:none; stroke:#ff4d3a; stroke-width:2.6; opacity:.55;
+          filter:drop-shadow(0 0 2.5px #ff4d3a) drop-shadow(0 0 1px #ff4d3a);
+          animation:noprodPulse 2.4s ease-in-out infinite; }
+.noprod.on { display:block; }
+@keyframes noprodPulse { 0%,100% { opacity:.35; } 50% { opacity:.75; } }
+@media (prefers-reduced-motion: reduce) { .noprod { animation:none; opacity:.6; } }
 .ship { display:none; } .ship.on { display:block; }
 .ship.imp path { fill:#262830; stroke:#e8e8e8; stroke-width:1.2; }
 .shipImg { filter:drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000); }
@@ -132,6 +142,7 @@ body:not(.pstyle) #planets .crest { display:none; }   /* hexagon style: colour o
 .side tr + tr td { border-top:1px solid #34373d; }
 .src { font-size:12px; color:#999; margin:2px 0 0; line-height:1.35; }
 .src b { color:#bbb; font-weight:600; }
+.side td.src { white-space:normal; overflow-wrap:anywhere; text-align:left; font-size:11.5px; color:#999; }
 #icons { position:fixed; inset:0; z-index:41; display:none; align-items:center; justify-content:center;
          background:rgba(0,0,0,.55); touch-action:pan-y; }
 #icons.show { display:flex; }
@@ -183,6 +194,12 @@ body:not(.pstyle) #planets .crest { display:none; }   /* hexagon style: colour o
           <stop offset=".45" stop-color="#e6e6e6"/>
           <stop offset=".85" stop-color="#a8a8a8"/>
           <stop offset="1" stop-color="#7c7c7c"/>
+        </radialGradient>
+        <radialGradient id="rebShadeBlue" cx="38%" cy="32%" r="72%">
+          <stop offset="0" stop-color="#ffffff"/>
+          <stop offset=".4" stop-color="#e3f1ff"/>
+          <stop offset=".82" stop-color="#8fc0ef"/>
+          <stop offset="1" stop-color="#5b8fc4"/>
         </radialGradient>
       </defs>
       <g id="erase"></g>
@@ -403,6 +420,8 @@ for (const p of planets) {
   const t     = el("text", {}, g); t.textContent = label(p);
   labelEls[p.name] = { g, erase, box, t, p };
 }
+/* the shifted ALDERAAN label's erase patch hides a bit of the system border: redraw it (under the label) */
+el("line", { x1:482, y1:549, x2:514, y2:573, stroke:"#000", "stroke-width":5.6, "stroke-linecap":"butt" }, gErase);
 
 /* ---------- planet tokens: queue number, symbols, sabotage, allegiance hex, ship ---------- */
 const SYM = 20, GAP = 3, HEXW = 28, NUMR = 7.5;
@@ -424,7 +443,7 @@ function drawHex(parent) {
   const states = [e];
   for (const [f, cls, fill, rim] of DISC) {
     const st = el("g", { class:"pl " + cls }, g);
-    el("polygon", { points:HEXPTS, fill:fillOf(f, fill), stroke:rim, "stroke-width":1.8 }, st);
+    el("polygon", { class:"base", points:HEXPTS, fill:fillOf(f, fill), stroke:rim, "stroke-width":1.8 }, st);
     if (f !== REB) el("polygon", { points:HEXPTS, fill:"url(#plShade)" }, st);
     drawCrest(f, el("g", { transform:"scale(1.15)" }, st), fill);
     states[f] = st;
@@ -486,13 +505,16 @@ function drawCrest(f, parent, fill) {
 }
 const plEls = {};
 for (const p of planets) {
-  if (!PROD[p.name]) continue;
   const R = (REGIONS[p.name].r || 30) + 2, k = R/10;
   const g = el("g", { transform:`translate(${p.x},${p.y})` }, gPlan);
+  /* neutral planet: white-grey gradient */
+  const neu = el("g", { class:"pl neu" }, g);
+  el("circle", { r:R, fill:"url(#rebShade)", stroke:"#3a3a3a", "stroke-width":1.5 }, neu);
+  if (!PROD[p.name]) continue;
   const states = {};
   for (const [f, cls, fill, rim] of DISC) {
     const sg = el("g", { class:"pl " + cls }, g);
-    el("circle", { r:R, fill:fillOf(f, fill), stroke:rim, "stroke-width":1.5 }, sg);
+    el("circle", { class:"base", r:R, fill:fillOf(f, fill), stroke:rim, "stroke-width":1.5 }, sg);
     if (f !== REB) el("circle", { r:R, fill:"url(#plShade)" }, sg);
     const def = el("g", { class:"crest", transform:`scale(${(k*0.56).toFixed(3)})` }, sg);
     drawCrest(f, def, fill);
@@ -500,7 +522,8 @@ for (const p of planets) {
                              preserveAspectRatio:"xMidYMid meet" }, sg);
     states[f] = { sg, def, im, slot:cls };
   }
-  plEls[p.name] = { g, states, R };
+  const glow = el("circle", { class:"noprod", r:R + 1.5 }, g);
+  plEls[p.name] = { g, states, R, neu, glow };
 }
 
 /* generic starfighter silhouette, pointing up-left */
@@ -638,6 +661,8 @@ function render() {
       if (src && T.shipImg.getAttribute("href") !== src) T.shipImg.setAttribute("href", src);
     }
     const P = plEls[p.name];
+    P.neu.style.display = f === EMPTY ? "" : "none";
+    P.glow.classList.toggle("on", f !== EMPTY && (!!st.sab[p.name] || !!st.enemy[p.name]));
     for (const f of [OCC, IMP, REB]) {
       const S = P.states[f], src = icons[S.slot];
       S.sg.style.display = f === fac(p.name) ? "" : "none";
