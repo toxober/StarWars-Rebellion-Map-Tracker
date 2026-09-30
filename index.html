@@ -119,6 +119,16 @@ body:not(.pstyle) #planets .crest { display:none; }   /* hexagon style: colour o
   opacity:1; transition:opacity .5s; pointer-events:none;
 }
 #hint.hide { opacity:0; }
+/* ---- allegiance picker (alternative controls: long press on a planet) ---- */
+#facPick { position:fixed; left:0; top:0; z-index:30; display:none; padding:6px; min-width:200px;
+           background:#222; border-radius:12px; box-shadow:0 4px 20px #0009; }
+#facPick.show { display:block; }
+#fpTitle { color:#aaa; font-size:13px; font-weight:700; padding:4px 10px 6px; }
+#fpBody button { display:flex; align-items:center; gap:12px; width:100%; padding:9px 12px; border:0;
+                 border-radius:8px; background:transparent; color:#fff; font:inherit; font-size:16px; text-align:left; }
+#fpBody button.cur { background:#3a3e45; font-weight:700; }
+#fpBody svg { flex:none; }
+#facPick .pl.reb > circle.base { fill:url(#rebShadeBlue); stroke:#3d6e9e; }
 
 /* ---- production window ---- */
 #prod { position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center;
@@ -223,6 +233,7 @@ body:not(.pstyle) #planets .crest { display:none; }   /* hexagon style: colour o
   <button id="fsBtn">Enter fullscreen</button>
   <button id="crossBtn">Hide &amp; disable ❌</button>
   <button id="styleBtn">Show allegiance as a hexagon</button>
+  <button id="ctrlBtn">Controls: tap = allegiance</button>
   <button id="iconsBtn">Custom icons</button>
   <button id="clear">Clear map</button>
   <button id="langBtn">Мова: Українська</button>
@@ -230,6 +241,7 @@ body:not(.pstyle) #planets .crest { display:none; }   /* hexagon style: colour o
   <button id="exit">Exit</button>
 </div>
 <div id="hint"></div>
+<div id="facPick" role="menu"><div id="fpTitle"></div><div id="fpBody"></div></div>
 
 <div id="prod" role="dialog" aria-modal="true">
   <div id="prodBox">
@@ -333,7 +345,12 @@ const STR = {
         slot_occ:"Occupation", slot_imp:"Empire", slot_reb:"Rebels", slot_shipReb:"Rebel ship", slot_shipImp:"Imperial ship",
         pick:"Choose", resetIcon:"Reset", standard:"standard", tooBig:"Could not save the picture: not enough storage.",
         sab:"sabotage", enemy:"enemy troops", occNote:"* occupied: only the first symbol counts", needCross:"Crosses are hidden and turned off. Turn them on first: menu → Show & enable ❌.", needFac:"Enemy troops: set the system's allegiance first (tap the hexagon).", needFacP:"Enemy troops: set the system's allegiance first (tap the planet).",
-        styleP:"Show allegiance as a hexagon", styleH:"Show allegiance on the planet", about:"How to use", nothing:"—", close:"Close" },
+        styleP:"Show allegiance as a hexagon", styleH:"Show allegiance on the planet", about:"How to use", nothing:"—", close:"Close",
+        hintA:"Tap a planet: cross. Long-press a planet: choose allegiance. Tap the symbols: sabotage. Long-press the system area: enemy troops. Pinch or +/− to zoom.",
+        hintAH:"Tap a planet: cross. Long-press a planet or tap the hexagon: allegiance. Tap the symbols: sabotage. Long-press the system area: enemy troops. Pinch or +/− to zoom.",
+        needFacA:"Enemy troops: set the system's allegiance first (long-press the planet).",
+        ctrlClassic:"Controls: tap = allegiance", ctrlAlt:"Controls: tap = ❌",
+        f0:"No allegiance", f1:"Occupied", f2:"Empire", f3:"Rebels" },
   uk: { title:"Карта планет", menu:"Меню", zoomIn:"Збільшити", zoomOut:"Зменшити",
         crossHide:"Приховати і викл. ❌", crossShow:"Показати і вкл. ❌", clear:"Очистити карту", exit:"Вийти", lang:"Language: English",
         fsEnter:"Повний екран", fsExit:"Вийти з повного екрана",
@@ -349,7 +366,12 @@ const STR = {
         slot_occ:"Окупація", slot_imp:"Імперія", slot_reb:"Повстанці", slot_shipReb:"Корабель повстанців", slot_shipImp:"Корабель Імперії",
         pick:"Вибрати", resetIcon:"Скинути", standard:"стандартний", tooBig:"Не вдалося зберегти картинку: замало пам'яті.",
         sab:"диверсія", enemy:"ворожі війська", occNote:"* окупована: враховано лише перший символ", needCross:"Хрестики приховані й вимкнені. Спочатку увімкніть їх: меню → Показати і вкл. ❌.", needFac:"Ворожі війська: спочатку задайте належність системи (тап по шестикутнику).", needFacP:"Ворожі війська: спочатку задайте належність системи (тап по планеті).",
-        styleP:"Показувати належність шестикутником", styleH:"Показувати належність на планеті", about:"Як користуватися", nothing:"—", close:"Закрити" }
+        styleP:"Показувати належність шестикутником", styleH:"Показувати належність на планеті", about:"Як користуватися", nothing:"—", close:"Закрити",
+        hintA:"Тап по планеті — хрестик. Довге натискання на планету — вибір належності. Тап по символах — диверсія. Довге натискання на область системи — ворожі війська. Двома пальцями або +/− — масштаб.",
+        hintAH:"Тап по планеті — хрестик. Довге натискання на планету або тап по шестикутнику — належність. Тап по символах — диверсія. Довге натискання на область системи — ворожі війська. Двома пальцями або +/− — масштаб.",
+        needFacA:"Ворожі війська: спочатку задайте належність системи (довге натискання на планету).",
+        ctrlClassic:"Керування: тап — належність", ctrlAlt:"Керування: тап — ❌",
+        f0:"Нічия", f1:"Окупована", f2:"Імперія", f3:"Повстанці" }
 };
 let lang = "en";
 try { if (localStorage.getItem(LANG_KEY) === "uk") lang = "uk"; } catch(e) {}
@@ -361,7 +383,15 @@ const CROSS_KEY = "rebel_base_map_crosses";
 let crossOn = true;                    /* false: crosses hidden, long press on a planet disabled */
 try { if (localStorage.getItem(CROSS_KEY) === "0") crossOn = false; } catch(e) {}
 document.body.classList.toggle("pstyle", pMode());
-const hintText = () => STR[lang][pMode() ? "hintP" : "hint"];
+const CTRL_KEY = "rebel_base_map_ctrl";
+let altCtrl = false;                   /* true: tap = cross, long press = allegiance picker */
+try { if (localStorage.getItem(CTRL_KEY) === "alt") altCtrl = true; } catch(e) {}
+const hintText = () => STR[lang][altCtrl ? (pMode() ? "hintA" : "hintAH") : (pMode() ? "hintP" : "hint")];
+function flashHint(text, ms) {
+  hint.textContent = text;
+  hint.classList.remove("hide");
+  clearTimeout(hint._t); hint._t = setTimeout(() => hint.classList.add("hide"), ms);
+}
 const isFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
 
 /* ---------- state ---------- */
@@ -700,6 +730,7 @@ function applyLang() {
   document.getElementById("fsBtn").textContent = isFullscreen() ? t.fsExit : t.fsEnter;
   hint.textContent = hintText();
   document.getElementById("styleBtn").textContent = pMode() ? t.styleP : t.styleH;
+  document.getElementById("ctrlBtn").textContent = altCtrl ? t.ctrlAlt : t.ctrlClassic;
   document.getElementById("aboutBtn").textContent = t.about;
   document.getElementById("aboutClose").setAttribute("aria-label", t.close);
   if (aboutEl.classList.contains("show")) showAbout();
@@ -770,6 +801,7 @@ function handleTap(clientX, clientY) {
     const T = tokEls[name];
     if (inRect(q, T.hit.sym)) { st.sab[name] = !st.sab[name]; changed(); return; }
   }
+  if (altCtrl) { const p = planetAt(q); if (p) toggleCross(p); return; }
   if (pMode()) for (const name in plEls) {
     const p = tokEls[name].p;
     if (Math.hypot(q.x - p.x, q.y - p.y) <= plEls[name].R + 4) { cycleFaction(name); return; }
@@ -777,8 +809,34 @@ function handleTap(clientX, clientY) {
   /* enemy troops are set by a long press on the system area (see pressTarget) */
 }
 /* what a long press does: cross on the planet, enemy troops on the rest of the system */
+/* planet under the point: its name label or the planet disc */
+function planetAt(q) {
+  for (const p of planets) if (inRect(q, labelEls[p.name].rect)) return p;
+  for (const p of planets)
+    if (Math.hypot(q.x - p.x, q.y - p.y) <= (REGIONS[p.name].r || 30) + 6) return p;
+  return null;
+}
+function toggleCross(p) {
+  if (!crossOn) { flashHint(STR[lang].needCross, 3500); if (navigator.vibrate) navigator.vibrate(15); return; }
+  if (p.name === LOCKED) return;                 /* Coruscant keeps its cross */
+  marks[p.name] = !marks[p.name];
+  save(); render();
+  if (navigator.vibrate) navigator.vibrate(35);
+}
 function pressTarget(clientX, clientY) {
   const q = toMap(clientX, clientY);
+  if (altCtrl) {
+    /* long press on a planet (or its tokens) opens the allegiance picker; remote systems have none */
+    let p = planetAt(q);
+    if (!p) for (const name in tokEls) {
+      const T = tokEls[name];
+      if (inRect(q, T.hit.hex) || inRect(q, T.hit.sym)) { p = T.p; break; }
+    }
+    if (p) return PROD[p.name] ? { pick:p } : null;
+    for (const name in tokEls)
+      if (inPoly(q, REGIONS[name].poly)) return fac(name) !== EMPTY ? { enemy:name } : { empty:name };
+    return null;
+  }
   for (const p of planets) if (inRect(q, labelEls[p.name].rect)) return { cross:p };
   for (const name in tokEls) {
     const T = tokEls[name];
@@ -792,13 +850,14 @@ function pressTarget(clientX, clientY) {
   }
   return null;
 }
-function cycleFaction(name) {
+function setFaction(name, now) {
   if (name === LOCKED) return;
-  const was = fac(name), now = (was + 1) % 4;
+  const was = fac(name);
   st.fac[name] = now;
   if (side(was) !== side(now)) delete st.enemy[name];   /* the enemy is a different side now */
   changed();
 }
+function cycleFaction(name) { setFaction(name, (fac(name) + 1) % 4); }
 function changed() {
   save(); render();
   if (navigator.vibrate) navigator.vibrate(15);
@@ -846,10 +905,15 @@ mapEl.addEventListener("pointerdown", e => {
   cancelPress();
   pressTimer = setTimeout(() => {
     pressTimer = null; tapOk = false; panning = false;
+    if (tg.pick) {
+      if (tg.pick.name === LOCKED) { if (navigator.vibrate) navigator.vibrate(15); return; }   /* always Imperial */
+      showPicker(tg.pick.name, startX, startY);
+      if (navigator.vibrate) navigator.vibrate(35);
+      return;
+    }
     if (tg.empty || (tg.cross && !crossOn)) {     /* explain instead of silence */
-      hint.textContent = tg.empty ? STR[lang][pMode() ? "needFacP" : "needFac"] : STR[lang].needCross;
-      hint.classList.remove("hide");
-      clearTimeout(hint._t); hint._t = setTimeout(() => hint.classList.add("hide"), tg.empty ? 2500 : 3500);
+      const need = altCtrl ? "needFacA" : pMode() ? "needFacP" : "needFac";
+      flashHint(tg.empty ? STR[lang][need] : STR[lang].needCross, tg.empty ? 2500 : 3500);
       if (navigator.vibrate) navigator.vibrate(15);
       return;
     }
@@ -903,6 +967,70 @@ mapEl.addEventListener("wheel", e => {
 /* a tap that does not start on a planet has no press timer, so give it one to measure the tap */
 mapEl.addEventListener("pointerdown", e => {
   if (pts.size === 1 && tapOk && !pressTimer) pressTimer = setTimeout(() => { pressTimer = null; tapOk = false; }, 550);
+});
+
+/* ---------- allegiance picker (alternative controls) ---------- */
+const pickEl = document.getElementById("facPick");
+let pickName = null, pickAt = 0;
+function facIcon(f) {
+  const s = document.createElementNS(NS, "svg");
+  s.setAttribute("viewBox", "-12 -12 24 24"); s.setAttribute("width", 30); s.setAttribute("height", 30);
+  if (f === EMPTY) {
+    el("circle", { r:11, fill:"url(#rebShade)", stroke:"#3a3a3a", "stroke-width":1.2 }, s);
+    return s;
+  }
+  const [, cls, fill, rim] = DISC.find(d => d[0] === f);
+  const g = el("g", { class:"pl " + cls }, s);
+  el("circle", { class:"base", r:11, fill:fillOf(f, fill), stroke:rim, "stroke-width":1.2 }, g);
+  if (f !== REB) el("circle", { r:11, fill:"url(#plShade)" }, g);
+  if (icons[cls]) el("image", { x:-7, y:-7, width:14, height:14, href:icons[cls], preserveAspectRatio:"xMidYMid meet" }, g);
+  else drawCrest(f, el("g", { transform:"scale(0.62)" }, g), fill);
+  return s;
+}
+function showPicker(name, cx, cy) {
+  const t = STR[lang], p = tokEls[name].p, cur = fac(name);
+  pickName = name; pickAt = Date.now();
+  document.getElementById("fpTitle").textContent = label(p);
+  const body = document.getElementById("fpBody");
+  body.innerHTML = "";
+  for (const f of [EMPTY, OCC, IMP, REB]) {
+    const b = document.createElement("button");
+    b.dataset.f = f;
+    if (f === cur) b.className = "cur";
+    b.appendChild(facIcon(f));
+    b.appendChild(document.createTextNode(t["f" + f]));
+    body.appendChild(b);
+  }
+  pickEl.classList.add("show");
+  /* above the finger if there is room, otherwise below; always inside the screen */
+  const w = pickEl.offsetWidth, h = pickEl.offsetHeight, vw = innerWidth, vh = innerHeight;
+  const x = Math.min(Math.max(8, cx - w/2), vw - w - 8);
+  let y = cy - h - 28;
+  if (y < 8) y = cy + 28;
+  y = Math.min(Math.max(8, y), vh - h - 8);
+  pickEl.style.left = x + "px"; pickEl.style.top = y + "px";
+}
+function hidePicker() { pickEl.classList.remove("show"); pickName = null; }
+document.getElementById("fpBody").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || !pickName) return;
+  if (Date.now() - pickAt < 350) return;        /* ignore the finger that opened the menu */
+  const name = pickName;
+  hidePicker();
+  setFaction(name, +b.dataset.f);
+});
+/* a touch outside the picker only closes it */
+document.addEventListener("pointerdown", e => {
+  if (!pickEl.classList.contains("show") || pickEl.contains(e.target)) return;
+  hidePicker();
+  e.stopPropagation();
+}, true);
+window.addEventListener("resize", hidePicker);
+
+document.getElementById("ctrlBtn").addEventListener("click", () => {
+  altCtrl = !altCtrl;
+  try { localStorage.setItem(CTRL_KEY, altCtrl ? "alt" : "classic"); } catch(e) {}
+  applyLang(); setMenu(false);
+  flashHint(hintText(), 5000);
 });
 
 /* ---------- production ---------- */
@@ -1058,7 +1186,7 @@ document.getElementById("styleBtn").addEventListener("click", () => {
 });
 
 /* ---------- how to use ---------- */
-const VERSION = "2.2.2";
+const VERSION = "2.4";
 const ABOUT = {
   en: `<h2>How to use</h2><div class="ver">Rebel Base Map · version ${VERSION}</div>
 <p>A companion map for <b>Star Wars: Rebellion</b>: track the search for the Rebel base, who controls each system, and each side's production.</p>
@@ -1075,6 +1203,10 @@ const ABOUT = {
 <li><b>Long-press the empty area of a system</b> to mark enemy troops there (set the allegiance first).</li>
 <li>Sabotaged systems and systems with enemy troops produce nothing.</li>
 <li>Menu → <b>Calculate production</b> shows units per side and queue. Occupied systems count only their first symbol; the Rebel base is always included.</li></ul>
+<h3>Alternative controls</h3><ul>
+<li>Menu → <b>Controls</b> switches between two schemes. Classic (described above): tap a planet — allegiance, long-press — cross.</li>
+<li>Alternative: <b>tap a planet</b> — put or remove the cross; <b>long-press a planet</b> — a menu to choose the allegiance directly.</li>
+<li>Sabotage and enemy troops work the same way in both schemes.</li></ul>
 <h3>Map and settings</h3><ul>
 <li><b>Pinch</b> or <b>+ / −</b> to zoom, drag to move.</li>
 <li><b>Custom icons</b>: use your own pictures for allegiance and ships.</li>
@@ -1095,6 +1227,10 @@ const ABOUT = {
 <li><b>Довге натискання на порожню область системи</b> — ворожі війська (спершу задайте належність).</li>
 <li>Система з диверсією або ворожими військами нічого не виробляє.</li>
 <li>Меню → <b>Порахувати виробництво</b> показує юніти кожної сторони за чергами. Окупована система дає лише перший символ; база повстанців враховується завжди.</li></ul>
+<h3>Альтернативне керування</h3><ul>
+<li>Меню → <b>Керування</b> перемикає дві схеми. Класична (описана вище): тап по планеті — належність, довге натискання — хрестик.</li>
+<li>Альтернативна: <b>тап по планеті</b> — поставити або прибрати хрестик; <b>довге натискання на планету</b> — меню для прямого вибору належності.</li>
+<li>Диверсія та ворожі війська працюють однаково в обох схемах.</li></ul>
 <h3>Карта й налаштування</h3><ul>
 <li><b>Двома пальцями</b> або <b>+ / −</b> — масштаб, тягнути — рух.</li>
 <li><b>Свої значки</b>: власні картинки для належності й кораблів.</li>
@@ -1119,7 +1255,7 @@ document.addEventListener("pointerdown", e => {
   if (menu.contains(e.target) || menuBtn.contains(e.target)) return;
   setMenu(false);
 }, true);
-document.addEventListener("keydown", e => { if (e.key === "Escape") { setMenu(false); hideProduction(); hideIcons(); hideAbout(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { hidePicker(); setMenu(false); hideProduction(); hideIcons(); hideAbout(); } });
 menuBtn.addEventListener("click", () => setMenu(!menu.classList.contains("show")));
 
 const fsBtn = document.getElementById("fsBtn");
