@@ -138,7 +138,7 @@ body:not(.pstyle) #planets .crest { display:none; }   /* hexagon style: colour o
            width:min(760px, 96vw); max-height:92vh; overflow:auto; padding:14px 16px 16px;
            box-shadow:0 8px 30px #000a; touch-action:pan-y; }
 #prodBox h2 { margin:0 44px 10px 0; font-size:19px; }
-#prodClose, #iconsClose { position:absolute; top:8px; right:8px; width:40px; height:40px; border:0; border-radius:10px;
+#prodClose, #iconsClose, #setClose { position:absolute; top:8px; right:8px; width:40px; height:40px; border:0; border-radius:10px;
              background:#33363c; color:#fff; font-size:24px; line-height:1; }
 .cols { display:flex; gap:14px; flex-wrap:wrap; }
 .side { flex:1 1 320px; min-width:0; background:#26292e; border-radius:10px; padding:10px 10px 8px; }
@@ -183,6 +183,29 @@ body:not(.pstyle) #planets .crest { display:none; }   /* hexagon style: colour o
 .irow .nm { flex:1; font-size:15px; }
 .irow button { border:0; border-radius:9px; padding:10px 12px; font-size:14px; background:#3a3e45; color:#fff; }
 .irow button.pick { background:#2f5d8a; }
+/* ---- settings window ---- */
+#settings { position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center;
+            background:rgba(0,0,0,.55); touch-action:pan-y; }
+#settings.show { display:flex; }
+#setBox { position:relative; background:#1e2024; color:#eee; border-radius:14px; width:min(480px,96vw);
+          max-height:92vh; overflow:auto; padding:14px 16px 8px; box-shadow:0 8px 30px #000a; touch-action:pan-y; }
+#setBox h2 { margin:0 44px 6px 0; font-size:19px; }
+.sgrp { padding:12px 0; border-top:1px solid #34373d; }
+.sgrp h3 { margin:0 0 8px; font-size:14px; color:#aaa; font-weight:700; }
+.seg { display:flex; gap:3px; padding:3px; background:#2a2d33; border-radius:11px; }
+.seg button { flex:1 1 0; min-width:0; border:0; border-radius:8px; padding:10px 6px; background:transparent;
+              color:#ccc; font:inherit; font-size:15px; }
+.seg button.on { background:#2f5d8a; color:#fff; font-weight:700; }
+.seg button small { display:block; margin-top:3px; font-size:12.5px; font-weight:400; opacity:.75; }
+.sdesc { margin:7px 2px 0; font-size:12.5px; color:#8c9098; line-height:1.4; }
+.icoRow { display:flex; align-items:center; gap:10px; }
+.icoStrip { flex:1; display:flex; gap:6px; flex-wrap:wrap; }
+.icoStrip .ic { position:relative; width:42px; height:42px; border-radius:8px; background:#7d838c;
+                display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.icoStrip .ic img { max-width:34px; max-height:34px; }
+.icoStrip .ic.cus::after { content:""; position:absolute; right:3px; top:3px; width:7px; height:7px;
+                           border-radius:50%; background:#5fd17a; box-shadow:0 0 0 1.5px #1e2024; }
+.icoRow > button { flex:none; border:0; border-radius:9px; padding:10px 14px; font-size:14px; background:#2f5d8a; color:#fff; }
 .skip { font-size:12px; color:#e0a0a0; margin-top:6px; line-height:1.35; }
 </style>
 </head>
@@ -232,11 +255,8 @@ body:not(.pstyle) #planets .crest { display:none; }   /* hexagon style: colour o
   <button id="prodBtn">Calculate production</button>
   <button id="fsBtn">Enter fullscreen</button>
   <button id="crossBtn">Hide &amp; disable ❌</button>
-  <button id="styleBtn">Show allegiance as a hexagon</button>
-  <button id="ctrlBtn">Controls: tap = allegiance</button>
-  <button id="iconsBtn">Custom icons</button>
+  <button id="settingsBtn">⚙ Settings</button>
   <button id="clear">Clear map</button>
-  <button id="langBtn">Мова: Українська</button>
   <button id="aboutBtn">How to use</button>
   <button id="exit">Exit</button>
 </div>
@@ -251,6 +271,13 @@ body:not(.pstyle) #planets .crest { display:none; }   /* hexagon style: colour o
   </div>
 </div>
 
+<div id="settings" role="dialog" aria-modal="true">
+  <div id="setBox">
+    <button id="setClose" aria-label="Close">×</button>
+    <h2 id="setTitle"></h2>
+    <div id="setBody"></div>
+  </div>
+</div>
 <div id="icons" role="dialog" aria-modal="true">
   <div id="iconsBox">
     <button id="iconsClose" class="xbtn" aria-label="Close">×</button>
@@ -350,6 +377,11 @@ const STR = {
         hintAH:"Tap a planet: cross. Long-press a planet or tap the hexagon: allegiance. Tap the symbols: sabotage. Long-press the system area: enemy troops. Pinch or +/− to zoom.",
         needFacA:"Enemy troops: set the system's allegiance first (long-press the planet).",
         ctrlClassic:"Controls: tap = allegiance", ctrlAlt:"Controls: tap = ❌",
+        settings:"⚙ Settings", setTitle:"Settings", setStyle:"Allegiance display", optPlanet:"On the planet", optHex:"Hexagon",
+        descPlanet:"The planet itself is painted: tap the planet.", descHex:"A hexagon next to the name: tap the hexagon.",
+        setCtrl:"Controls", optClassic:"Tap: allegiance", subClassic:"Hold: ❌", optAlt:"Tap: ❌", subAlt:"Hold: allegiance menu",
+        descCtrl:"Sabotage (tap the symbols) and enemy troops (hold the system area) work the same in both.",
+        setLang:"Language", setIcons:"Custom icons", iconsEdit:"Change", iconsAllStd:"All icons are standard.", iconsSome:"Own icons: {n} of 5.",
         f0:"No allegiance", f1:"Occupied", f2:"Empire", f3:"Rebels" },
   uk: { title:"Карта планет", menu:"Меню", zoomIn:"Збільшити", zoomOut:"Зменшити",
         crossHide:"Приховати і викл. ❌", crossShow:"Показати і вкл. ❌", clear:"Очистити карту", exit:"Вийти", lang:"Language: English",
@@ -371,6 +403,11 @@ const STR = {
         hintAH:"Тап по планеті — хрестик. Довге натискання на планету або тап по шестикутнику — належність. Тап по символах — диверсія. Довге натискання на область системи — ворожі війська. Двома пальцями або +/− — масштаб.",
         needFacA:"Ворожі війська: спочатку задайте належність системи (довге натискання на планету).",
         ctrlClassic:"Керування: тап — належність", ctrlAlt:"Керування: тап — ❌",
+        settings:"⚙ Налаштування", setTitle:"Налаштування", setStyle:"Як показувати належність", optPlanet:"На планеті", optHex:"Шестикутник",
+        descPlanet:"Фарбується сама планета: тапайте по планеті.", descHex:"Шестикутник біля назви: тапайте по шестикутнику.",
+        setCtrl:"Керування", optClassic:"Тап — належність", subClassic:"Утримати — ❌", optAlt:"Тап — ❌", subAlt:"Утримати — меню належності",
+        descCtrl:"Диверсія (тап по символах) і ворожі війська (утримати область системи) працюють однаково в обох схемах.",
+        setLang:"Мова", setIcons:"Свої значки", iconsEdit:"Змінити", iconsAllStd:"Усі значки стандартні.", iconsSome:"Свої значки: {n} з 5.",
         f0:"Нічия", f1:"Окупована", f2:"Імперія", f3:"Повстанці" }
 };
 let lang = "en";
@@ -721,16 +758,15 @@ function applyLang() {
   document.getElementById("crossBtn").textContent = crossOn ? t.crossHide : t.crossShow;
   document.getElementById("clear").textContent = t.clear;
   document.getElementById("exit").textContent = t.exit;
-  document.getElementById("langBtn").textContent = t.lang;
   document.getElementById("prodBtn").textContent = t.prod;
-  document.getElementById("iconsBtn").textContent = t.icons;
+  document.getElementById("settingsBtn").textContent = t.settings;
+  document.getElementById("setClose").setAttribute("aria-label", t.close);
+  if (setEl.classList.contains("show")) showSettings();
   document.getElementById("iconsClose").setAttribute("aria-label", t.close);
   if (iconsEl.classList.contains("show")) showIcons();
   document.getElementById("prodClose").setAttribute("aria-label", t.close);
   document.getElementById("fsBtn").textContent = isFullscreen() ? t.fsExit : t.fsEnter;
   hint.textContent = hintText();
-  document.getElementById("styleBtn").textContent = pMode() ? t.styleP : t.styleH;
-  document.getElementById("ctrlBtn").textContent = altCtrl ? t.ctrlAlt : t.ctrlClassic;
   document.getElementById("aboutBtn").textContent = t.about;
   document.getElementById("aboutClose").setAttribute("aria-label", t.close);
   if (aboutEl.classList.contains("show")) showAbout();
@@ -1026,12 +1062,6 @@ document.addEventListener("pointerdown", e => {
 }, true);
 window.addEventListener("resize", hidePicker);
 
-document.getElementById("ctrlBtn").addEventListener("click", () => {
-  altCtrl = !altCtrl;
-  try { localStorage.setItem(CTRL_KEY, altCtrl ? "alt" : "classic"); } catch(e) {}
-  applyLang(); setMenu(false);
-  flashHint(hintText(), 5000);
-});
 
 /* ---------- production ---------- */
 const prodEl = document.getElementById("prod");
@@ -1116,7 +1146,7 @@ function showIcons() {
     </div>`).join("");
   iconsEl.classList.add("show");
 }
-function hideIcons() { iconsEl.classList.remove("show"); }
+function hideIcons() { iconsEl.classList.remove("show"); if (setEl.classList.contains("show")) showSettings(); }
 document.getElementById("iconsBody").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   const s = b.dataset.slot;
@@ -1171,19 +1201,86 @@ function processIcon(file, slot) {
   img.onerror = () => URL.revokeObjectURL(url);
   img.src = url;
 }
-document.getElementById("iconsBtn").addEventListener("click", () => { setMenu(false); showIcons(); });
 document.getElementById("iconsClose").addEventListener("click", hideIcons);
 iconsEl.addEventListener("click", e => { if (e.target === iconsEl) hideIcons(); });
 
-/* ---------- allegiance style ---------- */
-document.getElementById("styleBtn").addEventListener("click", () => {
-  facStyle = pMode() ? "hex" : "planet";
+/* ---------- settings window: allegiance style, controls, language, custom icons ---------- */
+let hintDirty = false;               /* show the new hint once the window is closed */
+function setStyle(v) {
+  if (v === facStyle) return;
+  facStyle = v;
   try { localStorage.setItem(STYLE_KEY, facStyle); } catch(e) {}
   document.body.classList.toggle("pstyle", pMode());
-  applyLang(); render(); setMenu(false);
-  hint.classList.remove("hide");
-  clearTimeout(hint._t); hint._t = setTimeout(() => hint.classList.add("hide"), 4000);
+  hintDirty = true; applyLang(); render();
+}
+function setCtrl(alt) {
+  if (alt === altCtrl) return;
+  altCtrl = alt;
+  try { localStorage.setItem(CTRL_KEY, altCtrl ? "alt" : "classic"); } catch(e) {}
+  hintDirty = true; applyLang();
+}
+function setLang(v) {
+  if (v === lang) return;
+  lang = v;
+  try { localStorage.setItem(LANG_KEY, lang); } catch(e) {}
+  hintDirty = true; applyLang();
+}
+function shipIcon(rebel) {
+  const s = document.createElementNS(NS, "svg");
+  s.setAttribute("viewBox", "-15 -15 30 30"); s.setAttribute("width", 32); s.setAttribute("height", 32);
+  el("path", { d:SHIP_D, fill:rebel ? "#fbf6ea" : "#262830", stroke:rebel ? "#6b3c0c" : "#e8e8e8", "stroke-width":1.2 }, s);
+  return s;
+}
+function iconPreview(slot) {
+  const d = document.createElement("div");
+  d.className = "ic" + (icons[slot] ? " cus" : "");
+  d.title = STR[lang]["slot_" + slot];
+  if (slot === "occ" || slot === "imp" || slot === "reb") d.appendChild(facIcon(slot === "occ" ? OCC : slot === "imp" ? IMP : REB));
+  else if (icons[slot]) { const im = new Image(); im.src = icons[slot]; im.alt = ""; d.appendChild(im); }
+  else d.appendChild(shipIcon(slot === "shipReb"));
+  return d;
+}
+const segHtml = (key, opts) => `<div class="seg" data-k="${key}">` +
+  opts.map(([v, txt, on, sub]) => `<button data-v="${v}"${on ? ' class="on"' : ""}>${txt}${sub ? `<small>${sub}</small>` : ""}</button>`).join("") + `</div>`;
+function showSettings() {
+  const t = STR[lang], n = ICON_SLOTS.filter(k => icons[k]).length;
+  document.getElementById("setTitle").textContent = t.setTitle;
+  const body = document.getElementById("setBody");
+  body.innerHTML =
+    `<div class="sgrp" style="border-top:0"><h3>${t.setStyle}</h3>` +
+      segHtml("style", [["planet", t.optPlanet, pMode()], ["hex", t.optHex, !pMode()]]) +
+      `<p class="sdesc">${pMode() ? t.descPlanet : t.descHex}</p></div>` +
+    `<div class="sgrp"><h3>${t.setCtrl}</h3>` +
+      segHtml("ctrl", [["classic", t.optClassic, !altCtrl, t.subClassic], ["alt", t.optAlt, altCtrl, t.subAlt]]) +
+      `<p class="sdesc">${t.descCtrl}</p></div>` +
+    `<div class="sgrp"><h3>${t.setLang}</h3>` +
+      segHtml("lang", [["en", "English", lang === "en"], ["uk", "Українська", lang === "uk"]]) + `</div>` +
+    `<div class="sgrp"><h3>${t.setIcons}</h3><div class="icoRow"><div class="icoStrip"></div>` +
+      `<button id="iconsEditBtn">${t.iconsEdit}</button></div>` +
+      `<p class="sdesc">${n ? t.iconsSome.replace("{n}", n) : t.iconsAllStd}</p></div>`;
+  const strip = body.querySelector(".icoStrip");
+  for (const k of ICON_SLOTS) strip.appendChild(iconPreview(k));
+  setEl.classList.add("show");
+}
+function hideSettings() {
+  if (!setEl.classList.contains("show")) return;
+  setEl.classList.remove("show");
+  if (hintDirty) { hintDirty = false; flashHint(hintText(), 5000); }
+}
+const setEl = document.getElementById("settings");
+document.getElementById("setBody").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.id === "iconsEditBtn") { showIcons(); return; }
+  const seg = b.closest(".seg"); if (!seg) return;
+  const k = seg.dataset.k, v = b.dataset.v;
+  if (k === "style") setStyle(v);
+  else if (k === "ctrl") setCtrl(v === "alt");
+  else if (k === "lang") setLang(v);
+  showSettings();
 });
+document.getElementById("settingsBtn").addEventListener("click", () => { setMenu(false); hintDirty = false; showSettings(); });
+document.getElementById("setClose").addEventListener("click", hideSettings);
+setEl.addEventListener("click", e => { if (e.target === setEl) hideSettings(); });
 
 /* ---------- how to use ---------- */
 const VERSION = "2.4";
@@ -1193,7 +1290,7 @@ const ABOUT = {
 <h3>Allegiance</h3><ul>
 <li><b>Tap a planet</b> to cycle: none → occupied → Empire → Rebels → none.</li>
 <li>Planet colours: <b>black</b> — Empire, <b>white</b> — Rebels, <b>grey</b> — occupied, unchanged — no allegiance.</li>
-<li>Prefer the old hexagon next to the name? Menu → <b>Show allegiance as a hexagon</b> switches the style; then you tap the hexagon instead.</li></ul>
+<li>Prefer the old hexagon next to the name? Menu → <b>Settings</b> → <b>Allegiance display: Hexagon</b>; then you tap the hexagon instead.</li></ul>
 <h3>Search for the base</h3><ul>
 <li><b>Long-press a planet</b> to cross it out (the base is not there). Long-press again to remove the cross.</li>
 <li>Coruscant is always Imperial and always crossed out.</li>
@@ -1204,12 +1301,12 @@ const ABOUT = {
 <li>Sabotaged systems and systems with enemy troops produce nothing.</li>
 <li>Menu → <b>Calculate production</b> shows units per side and queue. Occupied systems count only their first symbol; the Rebel base is always included.</li></ul>
 <h3>Alternative controls</h3><ul>
-<li>Menu → <b>Controls</b> switches between two schemes. Classic (described above): tap a planet — allegiance, long-press — cross.</li>
+<li>Menu → <b>Settings</b> → <b>Controls</b> switches between two schemes. Classic (described above): tap a planet — allegiance, long-press — cross.</li>
 <li>Alternative: <b>tap a planet</b> — put or remove the cross; <b>long-press a planet</b> — a menu to choose the allegiance directly.</li>
 <li>Sabotage and enemy troops work the same way in both schemes.</li></ul>
 <h3>Map and settings</h3><ul>
 <li><b>Pinch</b> or <b>+ / −</b> to zoom, drag to move.</li>
-<li><b>Custom icons</b>: use your own pictures for allegiance and ships.</li>
+<li>Menu → <b>Settings</b>: allegiance display, controls, language (English / Українська) and <b>custom icons</b> — your own pictures for allegiance and ships (tap <b>Change</b>).</li>
 <li><b>Clear map</b> starts a new game. Everything is saved automatically on this device only.</li></ul>
 <p class="fine">Unofficial fan-made tool, not affiliated with Fantasy Flight Games or Lucasfilm.</p>`,
   uk: `<h2>Як користуватися</h2><div class="ver">Карта бази повстанців · версія ${VERSION}</div>
@@ -1217,7 +1314,7 @@ const ABOUT = {
 <h3>Належність</h3><ul>
 <li><b>Тап по планеті</b> перемикає: немає → окупована → Імперія → Повстанці → немає.</li>
 <li>Кольори планет: <b>чорна</b> — Імперія, <b>біла</b> — Повстанці, <b>сіра</b> — окупована, без змін — нічия.</li>
-<li>Зручніше старий шестикутник біля назви? Меню → <b>Показувати належність шестикутником</b> перемикає стиль; тоді тапати треба по шестикутнику.</li></ul>
+<li>Зручніше старий шестикутник біля назви? Меню → <b>Налаштування</b> → <b>Як показувати належність: Шестикутник</b>; тоді тапати треба по шестикутнику.</li></ul>
 <h3>Пошук бази</h3><ul>
 <li><b>Довге натискання на планету</b> — закреслити (бази там немає). Ще раз — прибрати хрестик.</li>
 <li>Корусант завжди імперський і завжди закреслений.</li>
@@ -1228,12 +1325,12 @@ const ABOUT = {
 <li>Система з диверсією або ворожими військами нічого не виробляє.</li>
 <li>Меню → <b>Порахувати виробництво</b> показує юніти кожної сторони за чергами. Окупована система дає лише перший символ; база повстанців враховується завжди.</li></ul>
 <h3>Альтернативне керування</h3><ul>
-<li>Меню → <b>Керування</b> перемикає дві схеми. Класична (описана вище): тап по планеті — належність, довге натискання — хрестик.</li>
+<li>Меню → <b>Налаштування</b> → <b>Керування</b> перемикає дві схеми. Класична (описана вище): тап по планеті — належність, довге натискання — хрестик.</li>
 <li>Альтернативна: <b>тап по планеті</b> — поставити або прибрати хрестик; <b>довге натискання на планету</b> — меню для прямого вибору належності.</li>
 <li>Диверсія та ворожі війська працюють однаково в обох схемах.</li></ul>
 <h3>Карта й налаштування</h3><ul>
 <li><b>Двома пальцями</b> або <b>+ / −</b> — масштаб, тягнути — рух.</li>
-<li><b>Свої значки</b>: власні картинки для належності й кораблів.</li>
+<li>Меню → <b>Налаштування</b>: як показувати належність, керування, мова (English / Українська) і <b>свої значки</b> — власні картинки для належності й кораблів (кнопка <b>Змінити</b>).</li>
 <li><b>Очистити карту</b> — нова гра. Усе зберігається автоматично лише на цьому пристрої.</li></ul>
 <p class="fine">Неофіційний фанатський інструмент, не пов'язаний з Fantasy Flight Games чи Lucasfilm.</p>`
 };
@@ -1255,7 +1352,11 @@ document.addEventListener("pointerdown", e => {
   if (menu.contains(e.target) || menuBtn.contains(e.target)) return;
   setMenu(false);
 }, true);
-document.addEventListener("keydown", e => { if (e.key === "Escape") { hidePicker(); setMenu(false); hideProduction(); hideIcons(); hideAbout(); } });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (iconsEl.classList.contains("show")) { hideIcons(); return; }   /* back to settings */
+  hidePicker(); setMenu(false); hideProduction(); hideSettings(); hideAbout();
+});
 menuBtn.addEventListener("click", () => setMenu(!menu.classList.contains("show")));
 
 const fsBtn = document.getElementById("fsBtn");
@@ -1277,14 +1378,6 @@ document.getElementById("clear").addEventListener("click", () => {
     marks = {}; st = { fac:{}, sab:{}, enemy:{} };
     normalise(); save(); render(); setMenu(false);
   }
-});
-document.getElementById("langBtn").addEventListener("click", () => {
-  lang = lang === "en" ? "uk" : "en";
-  try { localStorage.setItem(LANG_KEY, lang); } catch(e) {}
-  applyLang();
-  setMenu(false);
-  hint.classList.remove("hide");
-  setTimeout(() => hint.classList.add("hide"), 5000);
 });
 document.getElementById("exit").addEventListener("click", () => {
   save(); setMenu(false);
